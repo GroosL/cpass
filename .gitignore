@@ -1,4 +1,4 @@
 cpass
 *.gpg
 keyId
-.cache
+.cache/
