@@ -8,6 +8,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+char storeLocation[PATH_MAX];
+
 void printHelp(const char *name);
 void init(const char *id);
 char *generatePassword(int special, int size);
@@ -17,6 +19,15 @@ int main(int argc, char **argv) {
   if (argc < 2) {
     printHelp(argv[0]);
     return 0;
+  }
+
+  const char *home = getenv("HOME");
+  const char *customLocation = getenv("STOREPATH");
+  if (!customLocation) {
+    snprintf(storeLocation, PATH_MAX, "%s/.cpass", home);
+  }
+  else {
+    strcpy(storeLocation, customLocation);
   }
 
   setlocale(LC_ALL, "");
@@ -35,10 +46,9 @@ int main(int argc, char **argv) {
     
     if (!entryName)
       return 1;
-    
-    const char *home = getenv("HOME");
+        
     char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, entryName);
+    snprintf(path, sizeof(path), "%s/%s.gpg", storeLocation, entryName);
 
     gpgme_ctx_t ctx;
     gpgme_data_t in, out;
@@ -128,14 +138,13 @@ void printHelp(const char *name) {
 }
 
 void init(const char *id) {
-  const char *home = getenv("HOME");
   char dir[PATH_MAX];
   char path[PATH_MAX];
 
-  snprintf(dir, sizeof(dir), "%s/.cpass", home);
+  snprintf(dir, sizeof(dir), "%s", storeLocation);
   mkdir(dir, 0700);
 
-  snprintf(path, sizeof(path), "%s/.cpass/.keyId", home);
+  snprintf(path, sizeof(path), "%s/.keyId", storeLocation);
   
   FILE *f;
 
@@ -172,14 +181,13 @@ char *generatePassword(int special, int size) {
 }
 
 void addEntry(const char *name, const char *pass) {
-  const char *home = getenv("HOME");
   char entryPath[PATH_MAX];
   char keyPath[PATH_MAX];
 
-  snprintf(entryPath, sizeof(entryPath), "%s/.cpass/%s.gpg", home,
+  snprintf(entryPath, sizeof(entryPath), "%s/%s.gpg", storeLocation,
            name);
 
-  snprintf(keyPath, sizeof(keyPath), "%s/.cpass/.keyId", home);
+  snprintf(keyPath, sizeof(keyPath), "%s/.keyId", storeLocation);
 
   FILE *f = fopen(keyPath, "r");
   if (!f)
