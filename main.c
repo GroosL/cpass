@@ -22,13 +22,23 @@ int main(int argc, char **argv) {
   setlocale(LC_ALL, "");
   gpgme_check_version(NULL);
   
-  if (argc == 2 || (strcmp(argv[1], "show") == 0)) {
+  if (argc == 2 || (strcmp(argv[1], "show") == 0) || (strcmp(argv[1], "-c") == 0)) {
+    int copy = 0;
+    const char *entryName = NULL;
+    
+    for (int i = 1; i < argc; i++) {
+      if (strcmp(argv[i], "-c") == 0)
+        copy = 1;
+      else if (strcmp(argv[i], "show") != 0)
+        entryName = argv[i];
+    }
+    
+    if (!entryName)
+      return 1;
+    
     const char *home = getenv("HOME");
     char path[PATH_MAX];
-    if (argc > 2)
-      snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, argv[2]);
-    else
-      snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, argv[1]);
+    snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, entryName);
 
     gpgme_ctx_t ctx;
     gpgme_data_t in, out;
@@ -54,10 +64,21 @@ int main(int argc, char **argv) {
 
     char buf[1024];
     ssize_t n;
-    while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
-      fwrite(buf, 1, n, stdout);
-    
-    putchar('\n');
+    if (copy) {
+      // Copy to clipboard using wl-copy
+      FILE *pipe = popen("wl-copy", "w");
+      if (pipe) {
+        while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
+          fwrite(buf, 1, n, pipe);
+        pclose(pipe);
+      } else {
+        fprintf(stderr, "Error: Failed to open wl-copy\n");
+      }
+    } else {
+      while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
+        fwrite(buf, 1, n, stdout);
+      putchar('\n');
+    }
     gpgme_data_release(in);
     gpgme_data_release(out);
     gpgme_release(ctx);
@@ -114,9 +135,17 @@ void init(const char *id) {
   snprintf(dir, sizeof(dir), "%s/.cpass", home);
   mkdir(dir, 0700);
 
-  snprintf(path, sizeof(path), "%s/.cpass/keyId", home);
+  snprintf(path, sizeof(path), "%s/.cpass/.keyId", home);
+  
+  FILE *f;
 
-  FILE *f = fopen(path, "w");
+  f = fopen(path, "r");
+  if (f) {
+    fprintf(stderr, "ERROR: %s already contains keyId file!\n", path);
+    exit(1);
+  }
+
+  f = fopen(path, "w");
   if (!f)
     return;
 
@@ -150,7 +179,7 @@ void addEntry(const char *name, const char *pass) {
   snprintf(entryPath, sizeof(entryPath), "%s/.cpass/%s.gpg", home,
            name);
 
-  snprintf(keyPath, sizeof(keyPath), "%s/.cpass/keyId", home);
+  snprintf(keyPath, sizeof(keyPath), "%s/.cpass/.keyId", home);
 
   FILE *f = fopen(keyPath, "r");
   if (!f)
