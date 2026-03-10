@@ -21,14 +21,14 @@ int main(int argc, char **argv) {
 
   setlocale(LC_ALL, "");
   gpgme_check_version(NULL);
-
-  if (strcmp(argv[1], "show") == 0) {
-    if (argc < 3)
-      return 1;
-
+  
+  if (argc == 2 || (strcmp(argv[1], "show") == 0)) {
     const char *home = getenv("HOME");
     char path[PATH_MAX];
-    snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, argv[2]);
+    if (argc > 2)
+      snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, argv[2]);
+    else
+      snprintf(path, sizeof(path), "%s/.cpass/%s.gpg", home, argv[1]);
 
     gpgme_ctx_t ctx;
     gpgme_data_t in, out;
@@ -72,8 +72,14 @@ int main(int argc, char **argv) {
     char *password = generatePassword(special, size);
     if (!password)
       return 1;
-
-    printf("%s\n", password);
+    
+    if (special && argc < 4)
+      printf("%s\n", password);
+    else
+      if (special)
+        addEntry(argv[3], password);
+      else 
+        addEntry(argv[2], password);
     free(password);
 
   } else if (strcmp(argv[1], "init") == 0) {
