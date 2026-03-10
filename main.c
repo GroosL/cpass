@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     ssize_t n;
     if (copy) {
       FILE *pipe;
-      pipe = (getenv("WAYLAND_DISPLAY") ? popen("wl-copy", "w") : popen("xclip -selection", "w"));
+      pipe = (getenv("WAYLAND_DISPLAY") ? popen("wl-copy", "w") : popen("xclip -selection clipboard", "w"));
       if (pipe) {
         while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
           fwrite(buf, 1, n, pipe);
