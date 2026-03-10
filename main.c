@@ -75,14 +75,14 @@ int main(int argc, char **argv) {
     char buf[1024];
     ssize_t n;
     if (copy) {
-      // Copy to clipboard using wl-copy
-      FILE *pipe = popen("wl-copy", "w");
+      FILE *pipe;
+      pipe = (getenv("WAYLAND_DISPLAY") ? popen("wl-copy", "w") : popen("xclip -selection", "w"));
       if (pipe) {
         while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
           fwrite(buf, 1, n, pipe);
         pclose(pipe);
       } else {
-        fprintf(stderr, "Error: Failed to open wl-copy\n");
+        fprintf(stderr, "Error: Failed to copy entry\n");
       }
     } else {
       while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
