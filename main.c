@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 char storeLocation[PATH_MAX];
@@ -75,7 +76,6 @@ int main(int argc, char **argv) {
     char buf[1024];
     ssize_t n;
     if (copy) {
-      // Copy to clipboard using wl-copy
       FILE *pipe = popen("wl-copy", "w");
       if (pipe) {
         while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
@@ -124,6 +124,117 @@ int main(int argc, char **argv) {
       return 1;
 
     addEntry(argv[2], argv[3]);
+
+  } else if (strcmp(argv[1], "edit") == 0) {
+    if (argc < 3) {
+      fprintf(stderr, "No entry specified!\n");
+      printHelp(argv[0]);
+      return 1;
+    }
+    
+    gpgme_data_t in, out;
+    gpgme_ctx_t ctx;
+    gpgme_key_t recp[2] = {NULL, NULL};
+
+    if (gpgme_new(&ctx))
+      return 1;
+
+    gpgme_set_protocol(ctx, GPGME_PROTOCOL_OpenPGP);
+
+    char keyPath[PATH_MAX];
+    snprintf(keyPath, sizeof(keyPath), "%s/.keyId", storeLocation);
+    
+    FILE *keyFile = fopen(keyPath, "r");
+    if (!keyFile) {
+      fprintf(stderr, "Error: Could not read key ID file\n");
+      gpgme_release(ctx);
+      return 1;
+    }
+    
+    char id[256];
+    if (!fgets(id, sizeof(id), keyFile)) {
+      fclose(keyFile);
+      gpgme_release(ctx);
+      return 1;
+    }
+    fclose(keyFile);
+    id[strcspn(id, "\n")] = 0;
+
+    if (gpgme_get_key(ctx, id, &recp[0], 0)) {
+      gpgme_release(ctx);
+      return 1;
+    }
+
+    char path[PATH_MAX];
+    snprintf(path, sizeof(path), "%s/%s.gpg", storeLocation, argv[2]);
+    
+    gpgme_data_new_from_file(&in, path, 1);
+    gpgme_data_new(&out);
+
+    if (gpgme_op_decrypt(ctx, in, out)) {
+      fprintf(stderr, "Error: Failed to decrypt file\n");
+      gpgme_data_release(in);
+      gpgme_data_release(out);
+      gpgme_key_unref(recp[0]);
+      gpgme_release(ctx);
+      return 1;
+    }
+
+    char tmp[] = "/dev/shm/cpass_XXXXXX";
+    int fd = mkstemp(tmp);
+    if (fd == -1) {
+      fprintf(stderr, "Error: Failed to create temp file\n");
+      gpgme_data_release(in);
+      gpgme_data_release(out);
+      gpgme_key_unref(recp[0]);
+      gpgme_release(ctx);
+      return 1;
+    }
+    
+    gpgme_data_seek(out, 0, SEEK_SET);
+    char buf[4096];
+    ssize_t n;
+    while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
+      write(fd, buf, n);
+    close(fd);
+
+    gpgme_data_release(in);
+    gpgme_data_release(out);
+
+    pid_t pid = fork();
+    
+    const char* editor = getenv("EDITOR");
+    if (!editor) {
+      editor = "vi";
+    }
+    
+    if (pid == 0) {
+      execlp(editor, editor, tmp, NULL);
+      exit(1);
+    }
+    waitpid(pid, NULL, 0);
+
+    gpgme_data_t plain, cipher;
+
+    gpgme_data_new_from_file(&plain, tmp, 1);
+    gpgme_data_new(&cipher);
+
+    gpgme_op_encrypt(ctx, recp, GPGME_ENCRYPT_ALWAYS_TRUST, plain, cipher);
+
+    gpgme_data_seek(cipher, 0, SEEK_SET);
+    FILE *outFile = fopen(path, "wb");
+    if (outFile) {
+      while ((n = gpgme_data_read(cipher, buf, sizeof(buf))) > 0)
+        fwrite(buf, 1, n, outFile);
+      fclose(outFile);
+    }
+
+    unlink(tmp);
+    
+    gpgme_key_unref(recp[0]);
+    gpgme_data_release(plain);
+    gpgme_data_release(cipher);
+    gpgme_release(ctx);
   }
 
   return 0;
