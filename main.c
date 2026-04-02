@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   const char *home = getenv("HOME");
   const char *customLocation = getenv("STOREPATH");
   if (!customLocation) {
-    snprintf(storeLocation, PATH_MAX, "%s/.cpass", home);
+    snprintf(storeLocation, PATH_MAX, "%s/.password-store", home);
   }
   else {
     strcpy(storeLocation, customLocation);
@@ -56,32 +56,34 @@ int main(int argc, char **argv) {
     gpgme_error_t err;
 
     err = gpgme_new(&ctx);
-    if (err)
+    if (err) {
+      fprintf(stderr, "Error: Could not open context\n");
       return 1;
+    }
 
     gpgme_set_protocol(ctx, GPGME_PROTOCOL_OpenPGP);
 
     err = gpgme_data_new_from_file(&in, path, 1);
-    if (err)
+    if (err) {
+      fprintf(stderr, "Error: Could not open file %s\n", path);
       return 1;
+    }
 
     gpgme_data_new(&out);
 
     err = gpgme_op_decrypt(ctx, in, out);
-    if (err)
+    if (err) {
+      fprintf(stderr, "Error: Could not decrypt file %s\n", path);
       return 1;
+    }
 
     gpgme_data_seek(out, 0, SEEK_SET);
 
     char buf[1024];
     ssize_t n;
     if (copy) {
-<<<<<<< HEAD
-      FILE *pipe = popen("wl-copy", "w");
-=======
       FILE *pipe;
       pipe = (getenv("WAYLAND_DISPLAY") ? popen("wl-copy", "w") : popen("xclip -selection clipboard", "w"));
->>>>>>> 43efdac71229ad002557177b6d864343b6bfb744
       if (pipe) {
         while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
           fwrite(buf, 1, n, pipe);
@@ -97,7 +99,6 @@ int main(int argc, char **argv) {
     gpgme_data_release(in);
     gpgme_data_release(out);
     gpgme_release(ctx);
-
   } else if (strcmp(argv[1], "generate") == 0) {
     int special = 0;
     int size = 12;
@@ -251,6 +252,7 @@ void printHelp(const char *name) {
   printf(" %s add <name> <password>\n", name);
   printf(" %s show <name>\n", name);
   printf(" %s generate [-s]\n", name);
+  printf(" %s help\n", name);
 }
 
 void init(const char *id) {
