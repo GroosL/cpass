@@ -26,14 +26,9 @@ int main(int argc, char **argv) {
   const char *customLocation = getenv("STOREPATH");
   if (!customLocation) {
     snprintf(storeLocation, PATH_MAX, "%s/.password-store", home);
-<<<<<<< HEAD
   }
   else {
-    strcpy(storeLocation, customLocation);
-=======
-  } else {
 		snprintf(storeLocation, sizeof(storeLocation), "%s", customLocation);
->>>>>>> cb97bb6 (Fixes)
   }
 
   setlocale(LC_ALL, "");
@@ -156,11 +151,6 @@ int main(int argc, char **argv) {
       printHelp(argv[0]);
       return 1;
     }
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     gpgme_data_t in, out;
     gpgme_ctx_t ctx;
     gpgme_key_t recp[2] = {NULL, NULL};
@@ -172,22 +162,12 @@ int main(int argc, char **argv) {
 
     char keyPath[PATH_MAX];
     snprintf(keyPath, sizeof(keyPath), "%s/.keyId", storeLocation);
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     FILE *keyFile = fopen(keyPath, "r");
     if (!keyFile) {
       fprintf(stderr, "Error: Could not read key ID file\n");
       gpgme_release(ctx);
       return 1;
     }
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     char id[256];
     if (!fgets(id, sizeof(id), keyFile)) {
       fclose(keyFile);
@@ -204,11 +184,6 @@ int main(int argc, char **argv) {
 
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/%s.gpg", storeLocation, argv[2]);
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     gpgme_data_new_from_file(&in, path, 1);
     gpgme_data_new(&out);
 
@@ -231,11 +206,6 @@ int main(int argc, char **argv) {
       gpgme_release(ctx);
       return 1;
     }
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     gpgme_data_seek(out, 0, SEEK_SET);
     char buf[4096];
     ssize_t n;
@@ -247,21 +217,12 @@ int main(int argc, char **argv) {
     gpgme_data_release(out);
 
     pid_t pid = fork();
-<<<<<<< HEAD
     
     const char* editor = getenv("EDITOR");
     if (!editor) {
       editor = "vi";
     }
-    
-=======
 
-    const char *editor = getenv("EDITOR");
-    if (!editor) {
-      editor = "vi";
-    }
-
->>>>>>> cb97bb6 (Fixes)
     if (pid == 0) {
       execlp(editor, editor, tmp, NULL);
       exit(1);
@@ -284,11 +245,6 @@ int main(int argc, char **argv) {
     }
 
     unlink(tmp);
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> cb97bb6 (Fixes)
     gpgme_key_unref(recp[0]);
     gpgme_data_release(plain);
     gpgme_data_release(cipher);
