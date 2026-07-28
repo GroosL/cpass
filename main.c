@@ -26,28 +26,34 @@ int main(int argc, char **argv) {
   const char *customLocation = getenv("STOREPATH");
   if (!customLocation) {
     snprintf(storeLocation, PATH_MAX, "%s/.password-store", home);
+<<<<<<< HEAD
   }
   else {
     strcpy(storeLocation, customLocation);
+=======
+  } else {
+		snprintf(storeLocation, sizeof(storeLocation), "%s", customLocation);
+>>>>>>> cb97bb6 (Fixes)
   }
 
   setlocale(LC_ALL, "");
   gpgme_check_version(NULL);
-  
-  if (argc == 2 || (strcmp(argv[1], "show") == 0) || (strcmp(argv[1], "-c") == 0)) {
+
+  if (argc == 2 || (strcmp(argv[1], "show") == 0) ||
+      (strcmp(argv[1], "-c") == 0)) {
     int copy = 0;
     const char *entryName = NULL;
-    
+
     for (int i = 1; i < argc; i++) {
       if (strcmp(argv[i], "-c") == 0)
         copy = 1;
       else if (strcmp(argv[i], "show") != 0)
         entryName = argv[i];
     }
-    
+
     if (!entryName)
       return 1;
-        
+
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/%s.gpg", storeLocation, entryName);
 
@@ -81,12 +87,25 @@ int main(int argc, char **argv) {
 
     char buf[1024];
     ssize_t n;
+    short d = 0;
     if (copy) {
       FILE *pipe;
-      pipe = (getenv("WAYLAND_DISPLAY") ? popen("wl-copy", "w") : popen("xclip -selection clipboard", "w"));
+      pipe = (getenv("WAYLAND_DISPLAY")
+                  ? popen("wl-copy", "w")
+                  : popen("xclip -selection clipboard", "w"));
+
       if (pipe) {
-        while ((n = gpgme_data_read(out, buf, sizeof(buf))) > 0)
-          fwrite(buf, 1, n, pipe);
+        while (!d && (n = gpgme_data_read(out, buf, sizeof(buf))) > 0) {
+          for (ssize_t i = 0; i < n; i++) {
+            if (buf[i] == '\n') {
+              fwrite(buf, 1, i, pipe);
+              d = 1;
+              break;
+            }
+          }
+          if (!d)
+            fwrite(buf, 1, n, pipe);
+        }
         pclose(pipe);
       } else {
         fprintf(stderr, "Error: Failed to copy entry\n");
@@ -109,14 +128,14 @@ int main(int argc, char **argv) {
     char *password = generatePassword(special, size);
     if (!password)
       return 1;
-    
+
     if (special && argc < 4)
       printf("%s\n", password);
+    else if (special)
+      addEntry(argv[3], password);
     else
-      if (special)
-        addEntry(argv[3], password);
-      else 
-        addEntry(argv[2], password);
+      addEntry(argv[2], password);
+		explicit_bzero(password, strlen(password));
     free(password);
 
   } else if (strcmp(argv[1], "init") == 0) {
@@ -137,7 +156,11 @@ int main(int argc, char **argv) {
       printHelp(argv[0]);
       return 1;
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     gpgme_data_t in, out;
     gpgme_ctx_t ctx;
     gpgme_key_t recp[2] = {NULL, NULL};
@@ -149,14 +172,22 @@ int main(int argc, char **argv) {
 
     char keyPath[PATH_MAX];
     snprintf(keyPath, sizeof(keyPath), "%s/.keyId", storeLocation);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     FILE *keyFile = fopen(keyPath, "r");
     if (!keyFile) {
       fprintf(stderr, "Error: Could not read key ID file\n");
       gpgme_release(ctx);
       return 1;
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     char id[256];
     if (!fgets(id, sizeof(id), keyFile)) {
       fclose(keyFile);
@@ -173,7 +204,11 @@ int main(int argc, char **argv) {
 
     char path[PATH_MAX];
     snprintf(path, sizeof(path), "%s/%s.gpg", storeLocation, argv[2]);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     gpgme_data_new_from_file(&in, path, 1);
     gpgme_data_new(&out);
 
@@ -196,7 +231,11 @@ int main(int argc, char **argv) {
       gpgme_release(ctx);
       return 1;
     }
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     gpgme_data_seek(out, 0, SEEK_SET);
     char buf[4096];
     ssize_t n;
@@ -208,12 +247,21 @@ int main(int argc, char **argv) {
     gpgme_data_release(out);
 
     pid_t pid = fork();
+<<<<<<< HEAD
     
     const char* editor = getenv("EDITOR");
     if (!editor) {
       editor = "vi";
     }
     
+=======
+
+    const char *editor = getenv("EDITOR");
+    if (!editor) {
+      editor = "vi";
+    }
+
+>>>>>>> cb97bb6 (Fixes)
     if (pid == 0) {
       execlp(editor, editor, tmp, NULL);
       exit(1);
@@ -236,7 +284,11 @@ int main(int argc, char **argv) {
     }
 
     unlink(tmp);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> cb97bb6 (Fixes)
     gpgme_key_unref(recp[0]);
     gpgme_data_release(plain);
     gpgme_data_release(cipher);
@@ -263,7 +315,7 @@ void init(const char *id) {
   mkdir(dir, 0700);
 
   snprintf(path, sizeof(path), "%s/.keyId", storeLocation);
-  
+
   FILE *f;
 
   f = fopen(path, "r");
@@ -302,8 +354,7 @@ void addEntry(const char *name, const char *pass) {
   char entryPath[PATH_MAX];
   char keyPath[PATH_MAX];
 
-  snprintf(entryPath, sizeof(entryPath), "%s/%s.gpg", storeLocation,
-           name);
+  snprintf(entryPath, sizeof(entryPath), "%s/%s.gpg", storeLocation, name);
 
   snprintf(keyPath, sizeof(keyPath), "%s/.keyId", storeLocation);
 

@@ -25,6 +25,7 @@
               pkg-config
               valgrind
               gpgme
+							bear
             ];
           };
       });
