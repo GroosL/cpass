@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <gpgme.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
